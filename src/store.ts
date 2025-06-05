@@ -51,6 +51,23 @@ export const fileselect = () => {
     });
 };
 
+// 清空已添加视频
+// 导出一个名为clearVideos的函数
+export const clearVideos = () => {
+    console.log("clearVideos()")
+    currentTemplate.update(temp => {
+        // 清空文件列表
+        temp.selectedTemplate.files = [];
+        // 重置原子计数器，确保上传状态正确
+        temp.selectedTemplate.atomicInt = 0;
+        // 标记模板已更改
+        temp.selectedTemplate.changed = true;
+        return temp;
+    });
+};
+
+
+
 export function attach(files: {name: string, path: string}[]) {
     console.log("attach(files)", files);
     currentTemplate.update(temp => {

@@ -1,5 +1,5 @@
 <script lang="ts">
-    import {attach, fileselect} from './store';
+    import {attach, fileselect, clearVideos} from './store';
     import {flip} from 'svelte/animate';
     import Progress from "./Progress.svelte";
     import DragAndDrop from './Drag-and-drop.svelte';
@@ -74,6 +74,13 @@
                     </path>
                 </svg>
                 添加视频
+            </button>
+            <button type="button" on:click={clearVideos}
+                    class="justify-self-end ml-2 py-1.5 px-3 flex justify-center items-center w-max bg-red-500 hover:bg-red-700 focus:ring-red-500 focus:ring-offset-red-200 text-white transition ease-in duration-200 text-center text-xs font-semibold shadow-md focus:outline-none focus:ring-2 focus:ring-offset-2 rounded-full">
+                <svg class="mr-2 w-3 h-3" fill="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v2M4 7h16"/>
+                </svg>
+            清空视频
             </button>
         {/if}
 
