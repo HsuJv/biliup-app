@@ -47,7 +47,10 @@ export const fileselect = () => {
     open(properties).then((pathStr) => {
         console.log("pathStr", pathStr);
         if (!pathStr) return;
-        attach(pathStr);
+        attach(pathStr.map(p => ({
+            name: extractFilename(p),
+            path: p
+        })));
     });
 };
 
