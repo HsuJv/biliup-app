@@ -30,7 +30,7 @@ impl Credential {
                 return Ok(read_guard.as_ref().unwrap().clone());
             }
         }
-        let login_info = login_by_cookies(cookie_file(&app)?).await?;
+        let login_info = login_by_cookies(cookie_file(&app)?, None).await?;
         let myinfo: serde_json::Value = login_info
             .client
             .get("https://api.bilibili.com/x/space/myinfo")

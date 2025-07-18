@@ -17,7 +17,7 @@ use biliup_app::error::{Error, Result};
 use biliup_app::{config_file, config_path, cookie_file, encode_hex, Credential, Progressbar, login_by_password};
 use futures::StreamExt;
 use tauri::async_runtime;
-use tauri::{Window, Manager};
+use tauri::{Window, Manager, Listener, Emitter};
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -70,7 +70,7 @@ async fn login_by_cookie(app: tauri::AppHandle, credential: tauri::State<'_, Cre
 
 #[tauri::command]
 async fn login_by_sms(app: tauri::AppHandle, code: u32, res: serde_json::Value) -> Result<String> {
-    let info = BiliCredential::new().login_by_sms(code, res).await?;
+    let info = BiliCredential::new(None).login_by_sms(code, res).await?;
     let file = std::fs::File::create(cookie_file(&app)?)?;
     serde_json::to_writer_pretty(&file, &info)?;
     println!("短信登录成功，数据保存在{:?}", file);
@@ -79,13 +79,13 @@ async fn login_by_sms(app: tauri::AppHandle, code: u32, res: serde_json::Value) 
 
 #[tauri::command]
 async fn send_sms(country_code: u32, phone: u64) -> Result<serde_json::Value> {
-    let ret = BiliCredential::new().send_sms(phone, country_code).await?;
+    let ret = BiliCredential::new(None).send_sms(phone, country_code).await?;
     Ok(ret)
 }
 
 #[tauri::command]
 async fn login_by_qrcode(app: tauri::AppHandle, res: serde_json::Value) -> Result<String> {
-    let info = BiliCredential::new().login_by_qrcode(res).await?;
+    let info = BiliCredential::new(None).login_by_qrcode(res).await?;
     let file = std::fs::File::create(cookie_file(&app)?)?;
     serde_json::to_writer_pretty(&file, &info)?;
     println!("链接登录成功，数据保存在{:?}", file);
@@ -94,7 +94,7 @@ async fn login_by_qrcode(app: tauri::AppHandle, res: serde_json::Value) -> Resul
 
 #[tauri::command]
 async fn get_qrcode() -> Result<serde_json::Value> {
-    let mut qrcode = BiliCredential::new().get_qrcode().await?;
+    let mut qrcode = BiliCredential::new(None).get_qrcode().await?;
     let response = reqwest::ClientBuilder::new()
         .redirect(reqwest::redirect::Policy::none())
         .build()
@@ -133,12 +133,9 @@ async fn upload(
     let config = load(app.clone())?;
     let probe = if let Some(line) = config.line {
         match line.as_str() {
-            "kodo" => line::kodo(),
             "bda2" => line::bda2(),
             "ws" => line::ws(),
             "qn" => line::qn(),
-            "cos" => line::cos(),
-            "cos-internal" => line::cos_internal(),
             _ => unreachable!(),
         }
     } else {
@@ -196,14 +193,14 @@ async fn upload(
     Ok(video)
 }
 
-#[tauri::command]
+#[tauri::command]   
 async fn submit(
     app: tauri::AppHandle,
     studio: Studio,
     credential: tauri::State<'_, Credential>,
 ) -> Result<serde_json::Value> {
     let login_info = &*credential.get_current_user_credential(&app).await?;
-    let ret = login_info.submit(&studio).await?;
+    let ret = login_info.submit_by_app(&studio, None).await?;
     Ok(ret.data.unwrap())
 }
 
@@ -229,7 +226,7 @@ async fn get_myinfo(app: tauri::AppHandle, credential: tauri::State<'_, Credenti
 async fn get_others_myinfo(app: tauri::AppHandle, file_name: String) -> Result<serde_json::Value> {
     println!("file_name {:?}", file_name);
 
-    let login_info = login_by_cookies(config_path(&app)?.join(file_name)).await?;
+    let login_info = login_by_cookies(config_path(&app)?.join(file_name), None).await?;
 
     Ok(login_info
         .client
@@ -281,7 +278,7 @@ fn is_vid(input: &str) -> bool {
 async fn show_video(app: tauri::AppHandle, input: &str, credential: tauri::State<'_, Credential>) -> Result<Studio> {
     let login_info = &*credential.get_current_user_credential(&app).await?;
     let data = login_info
-        .video_data(&biliup::uploader::bilibili::Vid::from_str(input)?)
+        .video_data(&biliup::uploader::bilibili::Vid::from_str(input)?, None)
         .await?;
     let mut data = dbg!(data);
     let mut studio: Studio = serde_json::from_value(data["archive"].take())?;
@@ -304,7 +301,7 @@ async fn edit_video(
     studio: Studio,
     credential: tauri::State<'_, Credential>,
 ) -> Result<serde_json::Value> {
-    let ret = credential.get_current_user_credential(&app).await?.edit(&studio).await?;
+    let ret = credential.get_current_user_credential(&app).await?.edit_by_web(&studio).await?;
     Ok(ret)
 }
 
