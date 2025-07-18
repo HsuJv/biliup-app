@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 分P列表组件，负责分P拖拽排序与管理
     import {attach, fileselect, clearVideos} from './store';
     import {flip} from 'svelte/animate';
     import Progress from "./Progress.svelte";

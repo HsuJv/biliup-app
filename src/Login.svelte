@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 登录页面，负责账号登录、二维码、短信等方式
     import {isLogin} from './store';
     import {fade, scale} from 'svelte/transition';
     import {invoke} from '@tauri-apps/api/core';

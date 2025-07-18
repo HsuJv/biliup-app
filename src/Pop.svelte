@@ -1,4 +1,5 @@
 <script>
+    // 弹窗提示组件，展示错误和成功信息
     import {fly} from 'svelte/transition';
 
     export let msg = '';

@@ -1,8 +1,9 @@
 <script context="module">
+    // 模态框组件，弹窗展示内容
     let totalComponents = 0;
 </script>
 
-<script>
+<script lang="ts">
     import {onMount} from "svelte";
     let topDiv;
     let componentId = totalComponents++;

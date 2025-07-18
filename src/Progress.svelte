@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 进度条组件，负责展示分P上传进度
     import {tweened} from "svelte/motion";
     import {emit} from "@tauri-apps/api/event";
     import {getCurrentWindow } from "@tauri-apps/api/window";

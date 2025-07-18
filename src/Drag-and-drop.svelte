@@ -1,4 +1,6 @@
-<script>
+<script lang="ts">
+    // 拖拽上传组件，负责文件拖拽交互
+
     import {attach, fileselect} from './store.ts';
     import {draw} from 'svelte/transition';
     import {getContext, onDestroy} from "svelte";

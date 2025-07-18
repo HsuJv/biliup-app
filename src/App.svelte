@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 应用主入口，负责登录与主页面切换
 	import Login from './Login.svelte';
 	import Home from './Home.svelte';
 	import {isLogin} from './store.ts';

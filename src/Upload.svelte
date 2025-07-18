@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 上传页面，负责模板编辑、分区选择、标签管理、定时发布等
     import Append from './Append.svelte';
     import {currentTemplate, save_config, template} from './store';
     import {invoke} from "@tauri-apps/api/core";

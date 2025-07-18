@@ -1,6 +1,5 @@
-<script context="module">
-</script>
-<script>
+<script lang="ts">
+    // 分区选择组件，负责分区和子分区的选择
     import {createEventDispatcher} from 'svelte';
     import {invoke} from "@tauri-apps/api/core";
     import {createPop, partition} from "./common";

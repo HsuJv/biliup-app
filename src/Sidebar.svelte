@@ -1,4 +1,5 @@
 <script lang="ts">
+    // 侧边栏，负责模板列表展示与切换
     import {currentTemplate, template, save_config, isLogin, load_config} from "./store";
     import {fly} from 'svelte/transition';
     import {flip} from 'svelte/animate';

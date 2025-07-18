@@ -1,13 +1,15 @@
 <script lang="ts">
+    // 主页面，负责加载模板、监听拖拽事件，切换模板
     import Sidebar from './Sidebar.svelte';
     import Upload from './Upload.svelte';
-    import {attach, progress,speed, template, currentTemplate} from "./store";
-    import {listen, TauriEvent} from "@tauri-apps/api/event";
+    import {attach, progress, speed, template, currentTemplate} from "./store";
+    import {listen} from "@tauri-apps/api/event";
     import {invoke} from "@tauri-apps/api/core";
     import {createPop} from "./common";
     import {setContext} from "svelte";
     import {writable} from "svelte/store";
 
+    // 加载所有模板数据
     let map;
     invoke('load')
         .then((res) => {
@@ -23,7 +25,7 @@
                             desc: value.desc,
                             progress: 100,
                             uploaded: 0,
-                            speed_uploaded:0,
+                            speed_uploaded: 0,
                             speed: 0,
                             totalSize: 0,
                             complete: true,
@@ -41,13 +43,15 @@
         }).catch((e) => {
             createPop(e);
             console.log(e);
-        }
-    )
+        });
 
+    // 文件拖拽悬停状态
     let fileHover = writable(false);
     setContext("hover", fileHover);
     progress();
     speed();
+
+    // 监听文件拖拽事件
     listen("tauri://file-drop", (date: {payload: {paths: string[]}}) => {
         console.log("tauri://file-drop", date);
         let f: {name: string, path: string}[] = [];
@@ -62,11 +66,8 @@
                 console.error(`unable to extract filename from ${value}`);
                 return;
             }
-
-            f.push({
-                name: currentFilename,
-                path: value
-            });
+            // console.log('Extracted filename:', currentFilename);
+            f.push({ name: currentFilename, path: value });
         });
         attach(f);
         $fileHover = false;
@@ -90,12 +91,9 @@
     <Sidebar items="{items}"/>
     <div class="w-screen h-screen overflow-y-auto overflow-x-hidden">
         <div class="min-h-screen">
-            <!--        <Upload selected={current}/>-->
             {#key $currentTemplate.current}
                 <Upload selected={$currentTemplate.current} selectedTemplate="{$currentTemplate.selectedTemplate}"/>
             {/key}
-
-            <!--        <slot {current}></slot>-->
         </div>
     </div>
 </div>
