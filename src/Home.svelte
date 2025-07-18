@@ -48,8 +48,8 @@
     setContext("hover", fileHover);
     progress();
     speed();
-    listen(TauriEvent.DROP, (date: {payload: {paths: string[]}}) => {
-        console.log(TauriEvent.DROP, date);
+    listen("tauri://file-drop", (date: {payload: {paths: string[]}}) => {
+        console.log("tauri://file-drop", date);
         let f: {name: string, path: string}[] = [];
         date.payload.paths.forEach((value) => {
             let currentFilename: string | undefined;
@@ -72,13 +72,13 @@
         $fileHover = false;
         // setContext("hover", fileHover);
     });
-    listen(TauriEvent.DRAG, (date) => {
-        console.log(TauriEvent.DRAG, date);
+    listen("tauri://file-drop-hover", (date) => {
+        console.log("tauri://file-drop-hover", date);
         $fileHover = true;
         // setContext("hover", fileHover);
     });
-    listen(TauriEvent.DROP_CANCELLED, (date) => {
-        console.log(TauriEvent.DROP_CANCELLED, date);
+    listen("tauri://file-drop-cancelled", (date) => {
+        console.log("tauri://file-drop-cancelled", date);
         $fileHover = false;
         // setContext("hover", fileHover);
     });
