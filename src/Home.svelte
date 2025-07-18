@@ -99,7 +99,8 @@
         </div>
     </div>
 </div>
-<style global>
+
+<style>
     @import 'filepond/dist/filepond.css';
     @import 'filepond-plugin-image-preview/dist/filepond-plugin-image-preview.css';
 </style>

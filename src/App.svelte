@@ -90,7 +90,7 @@
         </ul>
 </main>
 
-<style global lang="postcss">
+<style lang="postcss">
     @tailwind base;
     @tailwind components;
     @tailwind utilities;
