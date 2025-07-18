@@ -6,7 +6,7 @@ import {crossfade, fly} from "svelte/transition";
 import {listen} from "@tauri-apps/api/event";
 import {createPop} from "./common";
 import type {BiliupConfig, SelectedTemplate} from "./global";
-import path from 'path-browserify';
+
 
 export const isLogin = writable(false);
 export const template = writable({});
@@ -47,10 +47,7 @@ export const fileselect = () => {
     open(properties).then((pathStr) => {
         console.log("pathStr", pathStr);
         if (!pathStr) return;
-        attach(pathStr.map(p => ({
-            name: path.basename(p),
-            path: p
-            })));
+        attach(pathStr);
     });
 };
 
@@ -84,6 +81,7 @@ export function attach(files: {name: string, path: string}[]) {
                 continue;
             }
             let filename = file.name;
+
             // temp['files'] = [...temp['files'], ...event.target.files];
             temp.selectedTemplate['files'].push({
                 filename: file.path,
