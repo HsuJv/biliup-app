@@ -32,6 +32,7 @@ fn login(
     password: &str,
     remember_me: bool,
 ) -> Result<String> {
+    // 阻塞调用密码登录
     async_runtime::block_on(login_by_password(&app, username, password))?;
     if remember_me {
         match load(app.clone()) {
@@ -41,11 +42,8 @@ fn login(
                     user.account.password = password.into();
                 }
                 save(app.clone(), config)?;
-                // let file = std::fs::File::create(config_file()?).with_context(|| "open config.yaml")?;
-                // serde_yaml::to_writer(file, &config).with_context(|| "write config.yaml")?
             }
             Err(_) => {
-                // let file = std::fs::File::create("config.yaml").with_context(|| "create config.yaml")?;
                 save(
                     app.clone(),
                     Config {
@@ -143,7 +141,6 @@ async fn upload(
     credential: tauri::State<'_, Credential>,
 ) -> Result<Video> {
     let bili = &*credential.get_current_user_credential(&app).await?;
-
     let config = load(app.clone())?;
     let probe = if let Some(line) = config.line {
         match line.as_str() {
@@ -156,7 +153,6 @@ async fn upload(
         line::Probe::probe(&bili.client).await?
     };
     let limit = config.limit;
-
     let filename = video.filename;
     let filepath = PathBuf::from(&filename);
     let video_file = VideoFile::new(&filepath)?;
@@ -164,7 +160,6 @@ async fn upload(
     let parcel = probe.pre_upload(bili, video_file).await?;
     let (tx, mut rx) = mpsc::unbounded_channel();
     let (tx2, mut rx2) = mpsc::unbounded_channel();
-    // let (tx, mut rx) = mpsc::channel(1);
     let mut uploaded = 0;
     let f_video = parcel.upload(StatelessClient::default(), limit, |vs| {
         vs.map(|chunk| {
@@ -182,7 +177,6 @@ async fn upload(
         move |event| {
             abort_handle.abort();
             println!("got window event-name with payload {:?}", event.payload());
-            // is_remove.store(false, Ordering::Relaxed);
         },
     );
     let f2 = filename.clone();
@@ -192,9 +186,7 @@ async fn upload(
     //而channel1每10MB左右才会传输一次进度，故保留channel1的信息来计算速度。
     tokio::spawn(async move {
         while let Some(uploaded) = rx.recv().await {
-            window
-                .emit("progress", (&filename, uploaded, total_size))
-                .unwrap();
+            window.emit("progress", (&filename, uploaded, total_size)).unwrap();
         }
     });
     tokio::spawn(async move {

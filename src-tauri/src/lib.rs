@@ -1,36 +1,34 @@
 use std::path::PathBuf;
-
 use biliup::uploader::credential::{login_by_cookies, Credential as BiliCredential};
 use futures::Stream;
 use std::fmt::Write;
 use std::pin::Pin;
 use std::task::Poll;
-
 use bytes::{Buf, Bytes};
 use reqwest::Body;
-
 use tokio::sync::mpsc::UnboundedSender;
-
 use std::sync::{Arc, RwLock};
 use biliup::uploader::bilibili::BiliBili;
 use tauri::Manager;
 
 pub mod error;
 
+/// B站登录凭证管理结构体
 #[derive(Default)]
 pub struct Credential {
     pub credential: RwLock<Option<Arc<BiliBili>>>,
 }
 
 impl Credential {
+    /// 获取当前用户凭证，若无则自动登录
     pub async fn get_current_user_credential(&self, app: &tauri::AppHandle) -> error::Result<Arc<BiliBili>> {
         {
             let read_guard = self.credential.read().unwrap();
-            if !read_guard.is_none() {
-                return Ok(read_guard.as_ref().unwrap().clone());
+            if let Some(cred) = read_guard.as_ref() {
+                return Ok(cred.clone());
             }
         }
-        let login_info = login_by_cookies(cookie_file(&app)?, None).await?;
+        let login_info = login_by_cookies(cookie_file(app)?, None).await?;
         let myinfo: serde_json::Value = login_info
             .client
             .get("https://api.bilibili.com/x/space/myinfo")
@@ -38,30 +36,32 @@ impl Credential {
             .await?
             .json()
             .await?;
-        let user = config_path(&app)?.join(format!("users/{}.json", myinfo["data"]["mid"]));
+        let user = config_path(app)?.join(format!("users/{}.json", myinfo["data"]["mid"]));
         user_path(app, user).await?;
         let arc = Arc::new(login_info);
         *self.credential.write().unwrap() = Some(arc.clone());
         Ok(arc)
     }
 
+    /// 清除当前凭证
     pub fn clear(&self) {
         *self.credential.write().unwrap() = None;
     }
 }
 
+/// 获取配置文件路径
 pub fn config_file(app: &tauri::AppHandle) -> error::Result<PathBuf> {
     Ok(config_path(app)?.join("config.yaml"))
 }
 
+/// 获取cookie文件路径
 pub fn cookie_file(app: &tauri::AppHandle) -> error::Result<PathBuf> {
     Ok(config_path(app)?.join("cookies.json"))
 }
 
+/// 获取配置目录路径，自动创建目录
 pub fn config_path(app: &tauri::AppHandle) -> error::Result<PathBuf> {
-    // TODO: maybe use tauri's PathResolver
     let mut config_dir: PathBuf = app.path().config_dir().unwrap();
-        // .ok_or_else(|| error::Error::Err("config_dir".to_string()))?;
     config_dir.push("biliup");
     if !config_dir.exists() {
         std::fs::create_dir(&config_dir)?;
@@ -70,6 +70,7 @@ pub fn config_path(app: &tauri::AppHandle) -> error::Result<PathBuf> {
     Ok(config_dir)
 }
 
+/// 保存用户cookie到指定路径
 pub async fn user_path(app: &tauri::AppHandle, path: PathBuf) -> error::Result<PathBuf> {
     let mut users = config_path(app)?;
     users.push("users");
@@ -81,6 +82,7 @@ pub async fn user_path(app: &tauri::AppHandle, path: PathBuf) -> error::Result<P
     Ok(users)
 }
 
+/// 通过账号密码登录并保存cookie
 pub async fn login_by_password(app: &tauri::AppHandle, username: &str, password: &str) -> anyhow::Result<()> {
     let info = BiliCredential::default().login_by_password(username, password).await?;
     let file = std::fs::File::create(cookie_file(app)?)?;
@@ -89,6 +91,7 @@ pub async fn login_by_password(app: &tauri::AppHandle, username: &str, password:
     Ok(())
 }
 
+/// u16数组转十六进制字符串
 pub fn encode_hex(bytes: &[u16]) -> String {
     let mut s = String::with_capacity(bytes.len() * 2);
     for &b in bytes {
@@ -97,26 +100,25 @@ pub fn encode_hex(bytes: &[u16]) -> String {
     s
 }
 
+/// 上传进度条结构体
 #[derive(Clone)]
 pub struct Progressbar {
     bytes: Bytes,
     tx: UnboundedSender<u64>,
-    // tx: Sender<u64>,
 }
 
 impl Progressbar {
+    /// 创建进度条
     pub fn new(bytes: Bytes, tx: UnboundedSender<u64>) -> Self {
         Self { bytes, tx }
     }
 
+    /// 发送进度并返回分片
     pub fn progress(&mut self) -> error::Result<Option<Bytes>> {
         let pb = &self.tx;
-
         let content_bytes = &mut self.bytes;
-
         let n = content_bytes.remaining();
-
-        let pc = 1048576;
+        let pc = 1048576; // 每次分片1MB
         if n == 0 {
             Ok(None)
         } else if n < pc {
@@ -131,7 +133,6 @@ impl Progressbar {
 
 impl Stream for Progressbar {
     type Item = error::Result<Bytes>;
-
     fn poll_next(
         mut self: Pin<&mut Self>,
         _cx: &mut std::task::Context<'_>,
@@ -149,7 +150,12 @@ impl From<Progressbar> for Body {
     }
 }
 
+#[cfg(test)]
 mod test {
     #[test]
-    fn test_hex() {}
+    fn test_hex() {
+        // 测试encode_hex函数
+        let data = [0x41u16, 0x42u16];
+        assert_eq!(super::encode_hex(&data), "4142");
+    }
 }
