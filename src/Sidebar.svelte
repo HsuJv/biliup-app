@@ -121,7 +121,7 @@
         console.log("openConfigDir", configDirectory);
         await open(configDirectory);
     }
-    let lines: string[] = ['ws', 'qn', 'auto', 'bda2', 'kodo', 'cos', 'cos-internal'];
+    let lines: string[] = ['ws', 'qn', 'auto', 'bda2'];
     $: console.log("lines", lines);
     let line: string = 'auto';
     $: console.log("line", line);

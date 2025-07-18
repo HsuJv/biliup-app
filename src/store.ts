@@ -95,6 +95,7 @@ export function attach(files: {name: string, path: string}[]) {
                 totalSize: 0,
                 complete: false,
                 process: false,
+                start: Date.now()
             });
             // let objectURL = URL.createObjectURL(file);
             // console.log(objectURL);

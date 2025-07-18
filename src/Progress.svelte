@@ -1,7 +1,7 @@
 <script lang="ts">
     import {tweened} from "svelte/motion";
     import {emit} from "@tauri-apps/api/event";
-    import {getCurrent} from "@tauri-apps/api/window";
+    import {getCurrentWindow } from "@tauri-apps/api/window";
 
     import {contentLimitation} from "./lib/constants";
     import type {SelectedTemplate} from "./global";
@@ -34,7 +34,7 @@
         // console.log("speed", speed);
         // console.log("progress", progress);
     }
-    const current = getCurrent();
+    const current = getCurrentWindow ();
 
     function strToHexCharCode(str: string): string {
         if(str === "")
@@ -65,6 +65,7 @@
         <!--        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" />-->
         <!--    </svg>-->
         <!--{:else }-->
+        <!-- svelte-ignore a11y-no-static-element-interactions -->
         <svg class="svg m-auto h-7 w-7" fill="none" stroke="currentColor" viewBox="0 0 24 24"
              xmlns="http://www.w3.org/2000/svg">
             <path d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 00-2-2H5a2 2 0 00-2 2v8a2 2 0 002 2z" stroke-linecap="round" stroke-linejoin="round"

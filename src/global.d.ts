@@ -19,6 +19,7 @@ export type SelectedTemplate = {
         title: string,
         totalSize: number,
         uploaded: number,
+        start: number,
     }[],
     [key: string]: any;
 };
