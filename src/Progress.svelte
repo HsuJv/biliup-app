@@ -55,6 +55,7 @@
 
         await emit(strToHexCharCode(id));
         selectedTemplate.files = selectedTemplate.files.filter(value => value.id !== id);
+        selectedTemplate.changed = true;
     }
 </script>
 <div class="flex items-center justify-center space-x-2 px-1">
