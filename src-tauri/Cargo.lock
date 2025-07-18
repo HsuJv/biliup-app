@@ -235,7 +235,7 @@ dependencies = [
 
 [[package]]
 name = "biliup-app"
-version = "0.6.0"
+version = "0.6.1"
 dependencies = [
  "anyhow",
  "biliup",
@@ -1644,7 +1644,7 @@ dependencies = [
 
 [[package]]
 name = "hyper-tls"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "70206fc6890eaca9fde8a0bf71caa2ddfc9fe045ac9e5c70df101a7dbde866e0"
 dependencies = [
@@ -4310,7 +4310,7 @@ dependencies = [
 
 [[package]]
 name = "system-configuration-sys"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8e1d1b10ced5ca923a1fcb8d03e96b8d3268065d724548c0211415ff6ac6bac4"
 dependencies = [
@@ -5681,7 +5681,7 @@ checksum = "712e227841d057c1ee1cd2fb22fa7e5a5461ae8e48fa2ca79ec42cfc1931183f"
 
 [[package]]
 name = "window-vibrancy"
-version = "0.6.0"
+version = "0.6.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d9bec5a31f3f9362f2258fd0e9c9dd61a9ca432e7306cc78c444258f0dce9a9c"
 dependencies = [
