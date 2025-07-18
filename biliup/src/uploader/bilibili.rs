@@ -1,9 +1,9 @@
+use crate::ReqwestClientBuilderExt;
 use crate::error::{Kind, Result};
 use crate::uploader::credential::LoginInfo;
-use crate::ReqwestClientBuilderExt;
 use serde::ser::Error;
 use serde::{Deserialize, Serialize};
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 use std::collections::HashMap;
 
 use std::fmt::{Display, Formatter};
@@ -295,8 +295,73 @@ impl BiliBili {
         warn!("客户端接口已失效, 将使用网页接口, 忽略代理{proxy:?}");
         self.edit_by_web(studio).await
     }
-
     pub async fn edit_by_web(&self, studio: &Studio) -> Result<serde_json::Value> {
+        let mut studio_json = json!(studio);
+
+        // 1. 将 files 转换为 videos
+        if let Some(files) = studio_json.get_mut("files") {
+            if let Some(files_array) = files.as_array() {
+                let videos: Vec<_> = files_array
+                    .iter()
+                    .map(|file| {
+                        json!({
+                            "filename": file.get("filename").unwrap_or(&json!("")),
+                            "title": file.get("title").unwrap_or(&json!("")),
+                            "desc": file.get("desc").unwrap_or(&json!(""))
+                        })
+                    })
+                    .collect();
+                studio_json["videos"] = json!(videos);
+            }
+            studio_json.as_object_mut().unwrap().remove("files");
+        }
+
+        // 2. 删除多余字段，只保留网页端需要的字段
+        let allowed_keys = [
+            "aid",
+            "copyright",
+            "cover",
+            "cover43",
+            "csrf",
+            "desc",
+            "desc_format_id",
+            "dolby",
+            "dynamic",
+            "handle_staff",
+            "interactive",
+            "lossless_music",
+            "mission_id",
+            "new_web_edit",
+            "no_reprint",
+            "open_elec",
+            "open_subtitle",
+            "recreate",
+            "subtitle",
+            "tag",
+            "tid",
+            "title",
+            "videos",
+            "watermark",
+            "web_os",
+        ];
+        let mut filtered = serde_json::Map::new();
+        for key in allowed_keys.iter() {
+            if let Some(val) = studio_json.get(*key) {
+                filtered.insert(key.to_string(), val.clone());
+            }
+        }
+        // 3. 补充网页端必要字段
+        filtered.insert("new_web_edit".to_string(), json!(1));
+        filtered.insert("handle_staff".to_string(), json!(false));
+        filtered.insert("recreate".to_string(), json!(-1));
+        filtered.insert("cover43".to_string(), json!(""));
+        filtered.insert("web_os".to_string(), json!(1));
+        filtered.insert("watermark".to_string(), json!({ "state": 1 }));
+        filtered.insert("csrf".to_string(), json!(self.get_csrf()?));
+
+        let studio_json = json!(filtered);
+        info!("{}", &serde_json::to_string_pretty(&studio_json).unwrap());
+
         let ts = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)
             .unwrap()
@@ -304,10 +369,10 @@ impl BiliBili {
         let ret: serde_json::Value = self
             .client
             .post(format!(
-                "http://member.bilibili.com/x/vu/web/edit?t={ts}&csrf={}",
+                "https://member.bilibili.com/x/vu/web/edit?t={ts}&csrf={}",
                 self.get_csrf()?
             ))
-            .json(studio)
+            .json(&studio_json)
             .send()
             .await?
             .json()
@@ -328,7 +393,7 @@ impl BiliBili {
             .timeout(Duration::new(60, 0))
             .build()?
             .get(format!(
-                "http://member.bilibili.com/x/client/archive/view?access_key={}&{vid}",
+                "https://member.bilibili.com/x/client/archive/view?access_key={}&{vid}",
                 self.login_info.token_info.access_token
             ))
             .send()
@@ -447,6 +512,18 @@ impl BiliBili {
         }
     }
 
+    pub async fn download_cover_base64(&self, url: &str) -> Result<String> {
+        let resp = self
+            .client
+            .get(url)
+            .send()
+            .await
+            .map_err(|e| e.to_string())?;
+        let bytes = resp.bytes().await.map_err(|e| e.to_string())?;
+        let base64_str = base64::Engine::encode(&base64::engine::general_purpose::STANDARD, bytes);
+        Ok(format!("data:image/jpeg;base64,{}", base64_str))
+    }
+
     /// 稿件管理
     async fn archives(&self, status: &str, page_num: u32) -> Result<Value> {
         let url_str = "https://member.bilibili.com/x/web/archives";
@@ -496,7 +573,12 @@ impl BiliBili {
         }
     }
 
-    async fn recent_archives_data(&self, status: &str, from_page: u32, max_pages: Option<u32>) -> Result<Vec<Value>> {
+    async fn recent_archives_data(
+        &self,
+        status: &str,
+        from_page: u32,
+        max_pages: Option<u32>,
+    ) -> Result<Vec<Value>> {
         let mut first_page = self.archives(status, from_page).await?;
 
         let (page_size, count) = {
@@ -536,7 +618,12 @@ impl BiliBili {
     }
 
     /// 获取页数范围内的稿件
-    pub async fn recent_archives(&self, status: &str, from_page: u32, max_pages: Option<u32>) -> Result<Vec<Archive>> {
+    pub async fn recent_archives(
+        &self,
+        status: &str,
+        from_page: u32,
+        max_pages: Option<u32>,
+    ) -> Result<Vec<Archive>> {
         let studios = self
             .recent_archives_data(status, from_page, max_pages)
             .await?

@@ -286,6 +286,17 @@
         selectedTemplate.cover = '';
         console.log('A file has been removed', fileItem);
     }
+
+    function base64ToBlob(base64, mime = 'image/jpeg') {
+        const byteString = atob(base64.split(',')[1]);
+        const ab = new ArrayBuffer(byteString.length);
+        const ia = new Uint8Array(ab);
+        for (let i = 0; i < byteString.length; i++) {
+            ia[i] = byteString.charCodeAt(i);
+        }
+        return new Blob([ab], { type: mime });
+    }
+
     let filepondServer = {
         process: (fieldName, file: File, metadata, load, error, progress, abort, transfer, options) => {
             progress(false, 0, 0);
@@ -323,9 +334,9 @@
             // Should call the load method with a file object or blob when done
             (async () => {
                 try {
-                    const res = await fetch(source, {method: "GET"});
-                    console.log("fetch(source, {method: 'GET'}) => res", res);
-                    load(await res.blob());
+                    const b64cover = await invoke('download_cover_base64', { input:source });
+                    const blob = base64ToBlob(b64cover, 'image/jpeg');
+                    load(blob);
                 } catch (e) {
                     error(e);
                     createPop(e, 5000);
