@@ -160,7 +160,7 @@ mod tests {
     fn test_url() -> Result<()> {
         let url = Url::parse("h://host.path/to/remote/resource.m3u8")?;
         let scheme = url.scheme();
-        let new_url = url.join("http://path.host/remote/resource.ts")?;
+        let new_url = url.join("https://path.host/remote/resource.ts")?;
         println!("{url}, {scheme}");
         println!("{new_url}, {scheme}");
         Ok(())

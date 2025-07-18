@@ -4,27 +4,34 @@
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 use anyhow::Context;
 use biliup::client::StatelessClient;
-use biliup::uploader::credential::{Credential as BiliCredential};
+use biliup::credential::login_by_cookies;
 use biliup::uploader::bilibili::{Studio, Video};
+use biliup::uploader::credential::Credential as BiliCredential;
 use biliup::uploader::{line, Account, Config, User, VideoFile};
 use futures::future::abortable;
 use std::borrow::Cow;
 use std::path::PathBuf;
 use std::str::FromStr;
-use biliup::credential::login_by_cookies;
 
 use biliup_app::error::{Error, Result};
-use biliup_app::{config_file, config_path, cookie_file, encode_hex, Credential, Progressbar, login_by_password};
+use biliup_app::{
+    config_file, config_path, cookie_file, encode_hex, login_by_password, Credential, Progressbar,
+};
 use futures::StreamExt;
 use tauri::async_runtime;
-use tauri::{Window, Manager, Listener, Emitter};
+use tauri::{Emitter, Listener, Manager, Window};
 use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, Layer, Registry};
 
 #[tauri::command]
-fn login(app: tauri::AppHandle, username: &str, password: &str, remember_me: bool) -> Result<String> {
+fn login(
+    app: tauri::AppHandle,
+    username: &str,
+    password: &str,
+    remember_me: bool,
+) -> Result<String> {
     async_runtime::block_on(login_by_password(&app, username, password))?;
     if remember_me {
         match load(app.clone()) {
@@ -39,18 +46,20 @@ fn login(app: tauri::AppHandle, username: &str, password: &str, remember_me: boo
             }
             Err(_) => {
                 // let file = std::fs::File::create("config.yaml").with_context(|| "create config.yaml")?;
-                save(app.clone(),
-                     Config {
-                    user: Some(User {
-                        account: Account {
-                            username: username.into(),
-                            password: password.into(),
-                        },
-                    }),
-                    line: None,
-                    limit: 3,
-                    streamers: Default::default(),
-                })?;
+                save(
+                    app.clone(),
+                    Config {
+                        user: Some(User {
+                            account: Account {
+                                username: username.into(),
+                                password: password.into(),
+                            },
+                        }),
+                        line: None,
+                        limit: 3,
+                        streamers: Default::default(),
+                    },
+                )?;
             }
         }
     }
@@ -63,7 +72,10 @@ fn logout(credential: tauri::State<'_, Credential>) {
 }
 
 #[tauri::command]
-async fn login_by_cookie(app: tauri::AppHandle, credential: tauri::State<'_, Credential>) -> Result<String> {
+async fn login_by_cookie(
+    app: tauri::AppHandle,
+    credential: tauri::State<'_, Credential>,
+) -> Result<String> {
     credential.get_current_user_credential(&app).await?;
     Ok("登录成功".into())
 }
@@ -79,7 +91,9 @@ async fn login_by_sms(app: tauri::AppHandle, code: u32, res: serde_json::Value) 
 
 #[tauri::command]
 async fn send_sms(country_code: u32, phone: u64) -> Result<serde_json::Value> {
-    let ret = BiliCredential::new(None).send_sms(phone, country_code).await?;
+    let ret = BiliCredential::new(None)
+        .send_sms(phone, country_code)
+        .await?;
     Ok(ret)
 }
 
@@ -193,7 +207,7 @@ async fn upload(
     Ok(video)
 }
 
-#[tauri::command]   
+#[tauri::command]
 async fn submit(
     app: tauri::AppHandle,
     studio: Studio,
@@ -205,13 +219,19 @@ async fn submit(
 }
 
 #[tauri::command]
-async fn archive_pre(app: tauri::AppHandle, credential: tauri::State<'_, Credential>) -> Result<serde_json::Value> {
+async fn archive_pre(
+    app: tauri::AppHandle,
+    credential: tauri::State<'_, Credential>,
+) -> Result<serde_json::Value> {
     let login_info = &*credential.get_current_user_credential(&app).await?;
     Ok(login_info.archive_pre().await?)
 }
 
 #[tauri::command]
-async fn get_myinfo(app: tauri::AppHandle, credential: tauri::State<'_, Credential>) -> Result<serde_json::Value> {
+async fn get_myinfo(
+    app: tauri::AppHandle,
+    credential: tauri::State<'_, Credential>,
+) -> Result<serde_json::Value> {
     let login_info = &*credential.get_current_user_credential(&app).await?;
     Ok(login_info
         .client
@@ -270,12 +290,28 @@ async fn cover_up(
 }
 
 #[tauri::command]
+// 异步函数，用于下载封面并返回base64编码的字符串
+async fn download_cover_base64(
+    // tauri应用程序句柄
+    app: tauri::AppHandle,
+    input: String,
+    credential: tauri::State<'_, Credential>,
+) -> Result<String> {
+    let bili = &*credential.get_current_user_credential(&app).await?;
+    Ok(bili.download_cover_base64(&input).await?)
+}
+
+#[tauri::command]
 fn is_vid(input: &str) -> bool {
     biliup::uploader::bilibili::Vid::from_str(input).is_ok()
 }
 
 #[tauri::command]
-async fn show_video(app: tauri::AppHandle, input: &str, credential: tauri::State<'_, Credential>) -> Result<Studio> {
+async fn show_video(
+    app: tauri::AppHandle,
+    input: &str,
+    credential: tauri::State<'_, Credential>,
+) -> Result<Studio> {
     let login_info = &*credential.get_current_user_credential(&app).await?;
     let data = login_info
         .video_data(&biliup::uploader::bilibili::Vid::from_str(input)?, None)
@@ -301,7 +337,11 @@ async fn edit_video(
     studio: Studio,
     credential: tauri::State<'_, Credential>,
 ) -> Result<serde_json::Value> {
-    let ret = credential.get_current_user_credential(&app).await?.edit_by_web(&studio).await?;
+    let ret = credential
+        .get_current_user_credential(&app)
+        .await?
+        .edit_by_web(&studio)
+        .await?;
     Ok(ret)
 }
 
@@ -321,7 +361,8 @@ fn main() {
             let stdout_log = tracing_subscriber::fmt::layer()
                 .pretty()
                 .with_filter(LevelFilter::INFO);
-            let file_appender = tracing_appender::rolling::never(config_path(app.handle())?, "biliup.log");
+            let file_appender =
+                tracing_appender::rolling::never(config_path(app.handle())?, "biliup.log");
             // let (non_blocking, _guard) = tracing_appender::non_blocking(file_appender);
             let file_layer = tracing_subscriber::fmt::layer()
                 .with_ansi(false)
@@ -352,6 +393,7 @@ fn main() {
             get_myinfo,
             get_others_myinfo,
             cover_up,
+            download_cover_base64,
             is_vid,
             show_video,
             edit_video,
