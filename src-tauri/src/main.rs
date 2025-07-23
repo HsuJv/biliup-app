@@ -9,9 +9,10 @@ use biliup::uploader::bilibili::{Studio, Video};
 use biliup::uploader::credential::Credential as BiliCredential;
 use biliup::uploader::{line, Account, Config, User, VideoFile};
 use futures::future::abortable;
-use std::borrow::Cow;
-use std::path::PathBuf;
 use std::str::FromStr;
+use std::{borrow::Cow, time::Instant};
+use std::{path::PathBuf, time::Duration};
+use tokio::sync::mpsc;
 
 use biliup_app::error::{Error, Result};
 use biliup_app::{
@@ -20,7 +21,6 @@ use biliup_app::{
 use futures::StreamExt;
 use tauri::async_runtime;
 use tauri::{Emitter, Listener, Manager, Window};
-use tokio::sync::mpsc;
 use tracing::info;
 use tracing_subscriber::util::SubscriberInitExt;
 use tracing_subscriber::{filter::LevelFilter, prelude::*, Layer, Registry};
@@ -32,7 +32,6 @@ fn login(
     password: &str,
     remember_me: bool,
 ) -> Result<String> {
-    // 阻塞调用密码登录
     async_runtime::block_on(login_by_password(&app, username, password))?;
     if remember_me {
         match load(app.clone()) {
@@ -42,8 +41,11 @@ fn login(
                     user.account.password = password.into();
                 }
                 save(app.clone(), config)?;
+                // let file = std::fs::File::create(config_file()?).with_context(|| "open config.yaml")?;
+                // serde_yaml::to_writer(file, &config).with_context(|| "write config.yaml")?
             }
             Err(_) => {
+                // let file = std::fs::File::create("config.yaml").with_context(|| "create config.yaml")?;
                 save(
                     app.clone(),
                     Config {
@@ -141,6 +143,7 @@ async fn upload(
     credential: tauri::State<'_, Credential>,
 ) -> Result<Video> {
     let bili = &*credential.get_current_user_credential(&app).await?;
+
     let config = load(app.clone())?;
     let probe = if let Some(line) = config.line {
         match line.as_str() {
@@ -153,6 +156,7 @@ async fn upload(
         line::Probe::probe(&bili.client).await?
     };
     let limit = config.limit;
+
     let filename = video.filename;
     let filepath = PathBuf::from(&filename);
     let video_file = VideoFile::new(&filepath)?;
@@ -160,6 +164,7 @@ async fn upload(
     let parcel = probe.pre_upload(bili, video_file).await?;
     let (tx, mut rx) = mpsc::unbounded_channel();
     let (tx2, mut rx2) = mpsc::unbounded_channel();
+    // let (tx, mut rx) = mpsc::channel(1);
     let mut uploaded = 0;
     let f_video = parcel.upload(StatelessClient::default(), limit, |vs| {
         vs.map(|chunk| {
@@ -177,6 +182,7 @@ async fn upload(
         move |event| {
             abort_handle.abort();
             println!("got window event-name with payload {:?}", event.payload());
+            // is_remove.store(false, Ordering::Relaxed);
         },
     );
     let f2 = filename.clone();
@@ -185,13 +191,46 @@ async fn upload(
     //使用progressbar返回上传进度遇到错误触发重传时，会重新往channel2中写入信息，导致进度条超过100%，故使用channel1来传输进度。
     //而channel1每10MB左右才会传输一次进度，故保留channel1的信息来计算速度。
     tokio::spawn(async move {
+        let mut last = Instant::now();
+        let throttle = Duration::from_millis(999);
+        // let mut uploaded_one_shot = 0;
+
         while let Some(uploaded) = rx.recv().await {
-            window.emit("progress", (&filename, uploaded, total_size)).unwrap();
+            let now = Instant::now();
+            if now.duration_since(last) > throttle {
+                // info!("progress {}", uploaded);
+                let _ = window
+                    .emit("progress", (&filename, uploaded, total_size))
+                    .unwrap();
+                last = now;
+            }
         }
+        // flush
+        // info!("progress flush {}", total_size);
+        let _ = window
+            .emit("progress", (&filename, total_size, total_size))
+            .unwrap();
     });
+
     tokio::spawn(async move {
+        let mut last = Instant::now();
+        let throttle: Duration = Duration::from_millis(999);
+        let mut len_one_shot = 0;
+
         while let Some(len) = rx2.recv().await {
-            w2.emit("speed", (&f2, len, total_size)).unwrap();
+            let now = Instant::now();
+            len_one_shot += len;
+            if now.duration_since(last) > throttle {
+                // info!("speed {}", len_one_shot);
+                let _ = w2.emit("speed", (&f2, len_one_shot, total_size)).unwrap();
+                len_one_shot = 0;
+                last = now;
+            }
+        }
+        // flush
+        if len_one_shot > 0 {
+            // info!("speed flush {}", len_one_shot);
+            let _ = w2.emit("speed", (&f2, len_one_shot, total_size)).unwrap();
         }
     });
     video = a_video.await??;
@@ -343,7 +382,8 @@ fn log(level: &str, msg: &str) -> Result<()> {
     Ok(())
 }
 
-fn main() {
+#[tokio::main]
+async fn main() {
     tauri::Builder::default()
         .plugin(tauri_plugin_fs::init())
         .plugin(tauri_plugin_http::init())
@@ -393,6 +433,19 @@ fn main() {
             logout
         ])
         .manage(Credential::default())
-        .run(tauri::generate_context!())
-        .expect("error while running tauri application");
+        .build(tauri::generate_context!())
+        .expect("error while building tauri app")
+        .run(|_app_handle, event| {
+            // let _ = log("info", &format!("Event triggered {:?}", event));
+            match event {
+                tauri::RunEvent::WindowEvent {
+                    label: _,
+                    event: ref _e,
+                    ..
+                } => {
+                    // let _ = log("error", &format!("Event triggered {:?}, {:?}", event, e));
+                }
+                _ => {}
+            }
+        });
 }
