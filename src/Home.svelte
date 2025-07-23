@@ -52,7 +52,7 @@
     speed();
 
     // 监听文件拖拽事件
-    listen("tauri://file-drop", (date: {payload: {paths: string[]}}) => {
+    listen("tauri://drag-drop", (date: {payload: {paths: string[]}}) => {
         console.log("tauri://file-drop", date);
         let f: {name: string, path: string}[] = [];
         date.payload.paths.forEach((value) => {
@@ -73,13 +73,13 @@
         $fileHover = false;
         // setContext("hover", fileHover);
     });
-    listen("tauri://file-drop-hover", (date) => {
-        console.log("tauri://file-drop-hover", date);
+    listen("tauri://drag-over", (date) => {
+        console.log("tauri://drag-over", date);
         $fileHover = true;
         // setContext("hover", fileHover);
     });
-    listen("tauri://file-drop-cancelled", (date) => {
-        console.log("tauri://file-drop-cancelled", date);
+    listen("tauri://drag-leave", (date) => {
+        console.log("tauri://drag-leave", date);
         $fileHover = false;
         // setContext("hover", fileHover);
     });
