@@ -1,17 +1,17 @@
-import {type Writable, writable} from "svelte/store";
-import {open} from "@tauri-apps/plugin-dialog";
-import {sep} from "@tauri-apps/api/path";
-import {invoke} from "@tauri-apps/api/core";
-import {crossfade, fly} from "svelte/transition";
-import {listen} from "@tauri-apps/api/event";
-import {createPop} from "./common";
-import type {BiliupConfig, SelectedTemplate} from "./global";
+import { type Writable, writable } from "svelte/store";
+import { open } from "@tauri-apps/plugin-dialog";
+import { sep } from "@tauri-apps/api/path";
+import { invoke } from "@tauri-apps/api/core";
+import { crossfade, fly } from "svelte/transition";
+import { listen } from "@tauri-apps/api/event";
+import { createPop } from "./common";
+import type { BiliupConfig, SelectedTemplate } from "./global";
 
 
 export const isLogin = writable(false);
 export const template = writable({});
 
-export const currentTemplate: Writable<{current: string, selectedTemplate: SelectedTemplate}> = writable({
+export const currentTemplate: Writable<{ current: string, selectedTemplate: SelectedTemplate }> = writable({
     current: '',
     selectedTemplate: {
         title: '',
@@ -30,7 +30,7 @@ export const currentTemplate: Writable<{current: string, selectedTemplate: Selec
 export const [send, receive] = crossfade({
     duration: 800,
     fallback: (node, params) => {
-        return fly(node, {x: 200, delay: 500});
+        return fly(node, { x: 200, delay: 500 });
     },
 });
 export const fileselect = () => {
@@ -71,7 +71,7 @@ export const clearVideos = () => {
 
 
 
-export function attach(files: {name: string, path: string}[]) {
+export function attach(files: { name: string, path: string }[]) {
     console.log("attach(files)", files);
     currentTemplate.update(temp => {
         function findFile(file) {
@@ -123,7 +123,7 @@ function allComplete(files: SelectedTemplate['files'], temp: SelectedTemplate) {
     return true;
 }
 
-function upload(video: {title: string, filename: string, desc: string, [key:string]: any}, temp) {
+function upload(video: { title: string, filename: string, desc: string, [key: string]: any }, temp) {
     // const files = [];
     console.log("upload(video, temp)", video, temp);
     video.start = Date.now();
@@ -161,7 +161,7 @@ function upload(video: {title: string, filename: string, desc: string, [key:stri
             console.log(temp.submitCallback);
             if (temp.submitCallback) {
                 temp.submitCallback();
-                temp.submitCallback=null;
+                temp.submitCallback = null;
             }
             console.log("allComplete");
             return;
@@ -179,20 +179,15 @@ function extractFilename(path: string) {
 }
 
 export async function progress() {
-    return await listen('progress', (event: {payload: any[]}) => {
-        // console.log('listen(progress)', event);
-        // event.event is the event name (useful if you want to use a single callback fn for multiple event types)
-        // event.payload is the payload object
-        // console.log('!', event);
+    return await listen('progress', (event: { payload: any[] }) => {
         currentTemplate.update((cur) => {
             console.log(cur.selectedTemplate['files']);
             for (const file of cur.selectedTemplate['files']) {
                 if (file.id === extractFilename(event.payload[0])) {
-                    // file.progress = Math.round(event.payload[1] * 100) / 100;
-                    // $speed = Math.round(event.payload[1] * 100) / 100;
-                    file.totalSize = event.payload[2];
+                    file.totalSize = event.payload[3];
                     file.uploaded = event.payload[1];
-                    // file.progress.ldBar.set(Math.round(event.payload[1] * 100) / 100);
+                    file.speed_uploaded += event.payload[2];
+                    file.speed = file.speed_uploaded / 1000 / (Date.now() - file.start);
                     file.progress = file.uploaded / file.totalSize * 100;
                     if (Math.round(file.progress * 100) === 10000) file.complete = true;
 
@@ -202,32 +197,6 @@ export async function progress() {
             return cur;
         })
     });
-
-}
-export async function speed() {
-    return await listen('speed', (event: {payload: any[]}) => {
-        // console.log('listen(speed)', event);
-        // event.event is the event name (useful if you want to use a single callback fn for multiple event types)
-        // event.payload is the payload object
-        // console.log('!', event);
-        currentTemplate.update((cur) => {
-            for (const file of cur.selectedTemplate['files']) {
-                if (file.id === extractFilename(event.payload[0])) {
-                    // file.progress = Math.round(event.payload[1] * 100) / 100;
-                    // $speed = Math.round(event.payload[1] * 100) / 100;
-                    file.totalSize = event.payload[2];
-                    const millis = Date.now() - file.start;
-                    file.speed_uploaded += event.payload[1];
-                    file.speed = file.speed_uploaded / 1000 / millis;
-                    // file.progress.ldBar.set(Math.round(event.payload[1] * 100) / 100);
-
-                    return cur;
-                }
-            }
-            return cur;
-        })
-    });
-
 }
 
 export async function save_config(configModifier: (config: BiliupConfig) => void) {

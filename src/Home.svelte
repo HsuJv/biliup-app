@@ -2,7 +2,7 @@
     // 主页面，负责加载模板、监听拖拽事件，切换模板
     import Sidebar from './Sidebar.svelte';
     import Upload from './Upload.svelte';
-    import {attach, progress, speed, template, currentTemplate} from "./store";
+    import {attach, progress, template, currentTemplate} from "./store";
     import {listen} from "@tauri-apps/api/event";
     import {invoke} from "@tauri-apps/api/core";
     import {createPop} from "./common";
@@ -49,7 +49,6 @@
     let fileHover = writable(false);
     setContext("hover", fileHover);
     progress();
-    speed();
 
     // 监听文件拖拽事件
     listen("tauri://drag-drop", (date: {payload: {paths: string[]}}) => {

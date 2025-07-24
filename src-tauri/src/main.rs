@@ -19,7 +19,7 @@ use biliup_app::{
     config_file, config_path, cookie_file, encode_hex, login_by_password, Credential, Progressbar,
 };
 use futures::StreamExt;
-use tauri::async_runtime;
+use tauri::async_runtime::{self, spawn};
 use tauri::{Emitter, Listener, Manager, Window};
 use tracing::info;
 use tracing_subscriber::util::SubscriberInitExt;
@@ -185,54 +185,47 @@ async fn upload(
             // is_remove.store(false, Ordering::Relaxed);
         },
     );
-    let f2 = filename.clone();
-    let w2 = window.clone();
+
     //fixme
     //使用progressbar返回上传进度遇到错误触发重传时，会重新往channel2中写入信息，导致进度条超过100%，故使用channel1来传输进度。
     //而channel1每10MB左右才会传输一次进度，故保留channel1的信息来计算速度。
-    tokio::spawn(async move {
-        let mut last = Instant::now();
+    spawn(async move {
+        let mut last_emit = Instant::now();
         let throttle = Duration::from_millis(999);
-        // let mut uploaded_one_shot = 0;
-
-        while let Some(uploaded) = rx.recv().await {
-            let now = Instant::now();
-            if now.duration_since(last) > throttle {
-                // info!("progress {}", uploaded);
-                let _ = window
-                    .emit("progress", (&filename, uploaded, total_size))
-                    .unwrap();
-                last = now;
-            }
-        }
-        // flush
-        // info!("progress flush {}", total_size);
-        let _ = window
-            .emit("progress", (&filename, total_size, total_size))
-            .unwrap();
-    });
-
-    tokio::spawn(async move {
-        let mut last = Instant::now();
-        let throttle: Duration = Duration::from_millis(999);
         let mut len_one_shot = 0;
+        let mut last_uploaded = 0;
 
-        while let Some(len) = rx2.recv().await {
+        loop {
+            tokio::select! {
+                Some(uploaded) = rx.recv() => {
+                    last_uploaded = uploaded;
+                },
+                Some(len) = rx2.recv() => {
+                    len_one_shot += len;
+                },
+                else => break,
+            }
             let now = Instant::now();
-            len_one_shot += len;
-            if now.duration_since(last) > throttle {
+            if now.duration_since(last_emit) > throttle {
                 // info!("speed {}", len_one_shot);
-                let _ = w2.emit("speed", (&f2, len_one_shot, total_size)).unwrap();
+                let _ = window
+                    .emit(
+                        "progress",
+                        (&filename, last_uploaded, len_one_shot, total_size),
+                    )
+                    .unwrap();
                 len_one_shot = 0;
-                last = now;
+                last_emit = now;
             }
         }
         // flush
-        if len_one_shot > 0 {
-            // info!("speed flush {}", len_one_shot);
-            let _ = w2.emit("speed", (&f2, len_one_shot, total_size)).unwrap();
-        }
+        info!("flush {}", filename);
+        let _ = window.emit(
+            "progress",
+            (&filename, total_size, len_one_shot, total_size),
+        );
     });
+
     video = a_video.await??;
     println!("上传成功");
     Ok(video)
