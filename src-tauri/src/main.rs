@@ -207,7 +207,7 @@ async fn upload(
             }
             let now = Instant::now();
             if now.duration_since(last_emit) > throttle {
-                // info!("speed {}", len_one_shot);
+                info!("updated");
                 let _ = window
                     .emit(
                         "progress",

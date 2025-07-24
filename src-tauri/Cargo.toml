@@ -11,7 +11,7 @@ edition = "2021"
 tauri-build = { version = "2.0.0-beta", features = [] }
 
 [dependencies]
-tauri = { version = "2.0.0-beta", features = ["tracing", "devtools"] }
+tauri = { version = "2.0.0-beta", features = ["tracing"] }
 tauri-plugin-shell = "2.0.0-beta"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -22,7 +22,7 @@ serde_yaml = "0.9.34+deprecated"
 tokio = { version = "1.37.0", features = ["full"] }
 anyhow = "1.0.86"
 biliup = { path = "../biliup" }
-tracing = "0.1.40"
+tracing = { version = "0.1", features = ["release_max_level_off"] }
 tracing-subscriber = "0.3.18"
 bytes = "1.10.1"
 tracing-appender = "0.2.3"
